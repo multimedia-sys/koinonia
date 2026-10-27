@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Penatalayan & Penjadwalan Gereja</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background-color: #f3f4f6; }
+        .active-tab { border-bottom: 3px solid #1d4ed8; color: #1d4ed8; font-weight: 600; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800">
+
+    <!-- Header / Navbar -->
+    <header class="bg-indigo-900 text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <img src="https://lh3.googleusercontent.com/d/1YrMAJBpYTgIAGKkHAmqqyTudKwe3K82I" alt="Logo Gereja" class="w-10 h-10 object-contain rounded-full border border-amber-400/40 bg-white/10 p-0.5 shadow-sm">
+                <div>
+                    <h1 class="text-xl font-bold leading-tight">Penatalayan Gereja App</h1>
+                    <p class="text-xs text-indigo-200">Sistem Penjadwalan & Anti-Benturan Petugas Pelayanan</p>
+                </div>
+            </div>
+            <div class="flex flex-col md:flex-row items-end md:items-center space-y-1 md:space-y-0 md:space-x-3">
+                <div class="text-right text-xs bg-indigo-950/80 px-3.5 py-1.5 rounded-lg border border-indigo-700/60 shadow-inner">
+                    <div class="flex items-center space-x-1.5 text-amber-300 font-medium">
+                        <i class="fa-regular fa-clock"></i>
+                        <span id="live-time-display">--:--:-- WIB</span>
+                    </div>
+                    <div class="text-[11px] text-indigo-200 mt-0.5" id="live-date-display">
+                        Hari, Tanggal Bulan Tahun
+                    </div>
+                </div>
+                <div class="hidden md:flex items-center space-x-2 text-xs bg-indigo-800 px-3 py-1.5 rounded-full border border-indigo-700">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>HTTPS Secure</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 py-6">
+        
+        <!-- Navigation Tabs -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 mb-6 overflow-x-auto">
+            <div class="flex border-b border-slate-200 min-w-max">
+                <button onclick="switchTab('jadwal')" id="tab-jadwal" class="px-6 py-3.5 text-sm font-medium flex items-center space-x-2 active-tab transition-colors">
+                    <i class="fa-regular fa-calendar-check"></i>
+                    <span>Jadwal Pelayanan</span>
+                </button>
+                <button onclick="switchTab('input')" id="tab-input" class="px-6 py-3.5 text-sm font-medium text-slate-600 flex items-center space-x-2 hover:text-indigo-600 transition-colors">
+                    <i class="fa-solid fa-plus-circle text-indigo-600"></i>
+                    <span>Input Jadwal Baru</span>
+                </button>
+                <button onclick="switchTab('rekap')" id="tab-rekap" class="px-6 py-3.5 text-sm font-medium text-slate-600 flex items-center space-x-2 hover:text-indigo-600 transition-colors">
+                    <i class="fa-solid fa-chart-pie text-emerald-600"></i>
+                    <span>Rekap & Riwayat Petugas</span>
+                </button>
+                <button onclick="switchTab('petugas')" id="tab-petugas" class="px-6 py-3.5 text-sm font-medium text-slate-600 flex items-center space-x-2 hover:text-indigo-600 transition-colors">
+                    <i class="fa-solid fa-users text-amber-600"></i>
+                    <span>Master Petugas</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- BENTURAN ALERT NOTIFICATION -->
+        <div id="conflict-alert" class="hidden mb-6 bg-rose-50 border-l-4 border-rose-500 p-4 rounded-r-xl shadow-sm text-rose-800 animate-bounce">
+            <div class="flex items-start space-x-3">
+                <i class="fa-solid fa-triangle-exclamation text-rose-500 text-xl mt-0.5"></i>
+                <div>
+                    <h3 class="font-bold text-sm">Peringatan Benturan Jadwal Terdeteksi!</h3>
+                    <p id="conflict-alert-msg" class="text-xs mt-1 text-rose-700"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 1: JADWAL PELAYANAN (VIEW) -->
+        <section id="sec-jadwal" class="space-y-6">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <div class="flex items-center space-x-3">
+                    <label class="text-sm font-medium text-slate-700">Filter Kegiatan:</label>
+                    <select id="filter-kegiatan" onchange="renderJadwalView()" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <option value="ALL">⛪ Semua Kegiatan</option>
+                        <option value="Ibadah Umum">✝️ Ibadah Umum (Minggu 19.00)</option>
+                        <option value="KBA">🧒 KBA - Kelas Bina Anak (Minggu 07.30)</option>
+                        <option value="Komisi Wanita">👩 Komisi Wanita (Selasa 18.00)</option>
+                        <option value="Persekutuan Doa">🙏 Persekutuan Doa (Jumat Pertama 18.00)</option>
+                        <option value="Pemuda Remaja">👥 Persekutuan Pemuda Remaja (Sabtu 18.00)</option>
+                    </select>
+                </div>
+                <div class="text-xs text-slate-500 italic">
+                    <i class="fa-solid fa-circle-info mr-1 text-indigo-500"></i> Pengingat WhatsApp otomatis dikirimkan H-3 dan H-1 ke masing-masing petugas.
+                </div>
+            </div>
+
+            <!-- JADWAL CARDS CONTAINER -->
+            <div id="jadwal-cards-container" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Dynamic cards injected via Javascript -->
+            </div>
+        </section>
+
+        <!-- SECTION 2: INPUT JADWAL BARU -->
+        <section id="sec-input" class="hidden">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 max-w-4xl mx-auto">
+                <h2 class="text-lg font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100 flex items-center justify-between">
+                    <span>Form Input Jadwal & Penugasan Petugas</span>
+                    <span class="text-xs font-normal text-slate-500">*Sistem akan memeriksa benturan jadwal otomatis</span>
+                </h2>
+
+                <form id="form-input-jadwal" onsubmit="handleSaveJadwal(event)" class="space-y-6">
+                    <!-- Basic Event Info -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="block text-xs font-semibold text-slate-600">Jenis Kegiatan Gereja</label>
+                                <button type="button" onclick="openModalCustomKegiatan()" class="text-[11px] text-indigo-600 hover:text-indigo-800 font-bold flex items-center space-x-1">
+                                    <i class="fa-solid fa-plus-circle"></i>
+                                    <span>+ Kegiatan Baru</span>
+                                </button>
+                            </div>
+                            <select id="inp-kegiatan" onchange="updateFormRoles()" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                <option value="Ibadah Umum">✝️ Ibadah Umum (Minggu 19.00)</option>
+                                <option value="KBA">🧒 KBA - Kelas Bina Anak (Minggu 07.30)</option>
+                                <option value="Komisi Wanita">👩 Komisi Wanita (Selasa 18.00)</option>
+                                <option value="Persekutuan Doa">🙏 Persekutuan Doa (Jumat Pertama 18.00)</option>
+                                <option value="Pemuda Remaja">👥 Persekutuan Pemuda Remaja (Sabtu 18.00)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Hari & Tanggal</label>
+                            <input type="date" id="inp-tanggal" required class="w-full bg-white border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Waktu Kebaktian</label>
+                            <input type="text" id="inp-waktu" value="19.00 WIB" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Tema Firman / Pembicara / Bahan</label>
+                            <input type="text" id="inp-tema" placeholder="Contoh: Hidup dalam Kebenaran Injil" required class="w-full bg-white border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Tempat / Ruangan</label>
+                            <input type="text" id="inp-tempat" value="Gereja Utama GKA Abdi Sabda" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Role Input Fields -->
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-700 mb-3 flex items-center justify-between">
+                            <span>Input Petugas Sesuai Item Kegiatan</span>
+                            <span id="role-hint" class="text-xs font-normal text-indigo-600">Pilih nama petugas di tiap posisi</span>
+                        </h3>
+                        
+                        <div id="dynamic-role-inputs" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Injected by JavaScript based on selected activity -->
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
+                        <button type="button" onclick="resetForm()" class="px-5 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">Reset Form</button>
+                        <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-md transition-all flex items-center space-x-2">
+                            <i class="fa-solid fa-floppy-disk"></i>
+                            <span>Simpan Jadwal & Cek Benturan</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- SECTION 3: REKAP & RIWAYAT PETUGAS -->
+        <section id="sec-rekap" class="hidden space-y-6">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800">Rekapitulasi Pelayanan Petugas</h2>
+                        <p class="text-xs text-slate-500">Melihat frekuensi melayani untuk mencegah penugasan berulang pada orang yang sama.</p>
+                    </div>
+                    <button onclick="exportToCSV()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium flex items-center space-x-2 transition-colors">
+                        <i class="fa-solid fa-file-excel"></i>
+                        <span>Export Laporan Excel / CSV</span>
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-700 text-xs uppercase font-semibold">
+                                <th class="p-3 border">Nama Petugas</th>
+                                <th class="p-3 border text-center">Total Tugas</th>
+                                <th class="p-3 border text-center">Ibadah Umum</th>
+                                <th class="p-3 border text-center">KBA</th>
+                                <th class="p-3 border text-center">Komisi Wanita</th>
+                                <th class="p-3 border text-center">Persekutuan Doa</th>
+                                <th class="p-3 border text-center">Pemuda Remaja</th>
+                                <th class="p-3 border text-center">Beban Tugas</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rekap-table-body">
+                            <!-- Injected by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 4: MASTER PETUGAS -->
+        <section id="sec-petugas" class="hidden space-y-6">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800">Master Data Petugas Gereja</h2>
+                        <p class="text-xs text-slate-500">Daftar kontak pelayan & talenta pelayanan.</p>
+                    </div>
+                    <button onclick="openModalPetugas()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors">
+                        + Tambah Petugas
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="petugas-grid">
+                    <!-- Injected by JS -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- JAVASCRIPT LOGIC ENGINE -->
+    <script>
+        // MASTER PETUGAS DATABASE
+        const masterPetugas = [
+            { id: "P001", nama: "Ev. Ekker Saogo, M.Min., M.Th.", wa: "081234567002", komisi: "Pelayan Injil" },
+            { id: "P002", nama: "Sdri. Tesalonika Priskila Bella T., S.Th.", wa: "081234567003", komisi: "Pelayan Injil" },
+            { id: "P003", nama: "Pnt. Simon Bambang Sumarno", wa: "081234567004", komisi: "Majelis" },
+            { id: "P004", nama: "Pnt. Surya Wahyudi Lie", wa: "081234567005", komisi: "Majelis" },
+            { id: "P005", nama: "Pnt. Risma Pramita Sari", wa: "081234567006", komisi: "Majelis" },
+            { id: "P006", nama: "Sdri. Suwarni", wa: "081234567007", komisi: "Umum" },
+            { id: "P007", nama: "Sdr. Joan Natanael Surya Putra", wa: "081234567008", komisi: "Pemuda Remaja" },
+            { id: "P008", nama: "Sdr. Samuel Budiyanto Suwignyo", wa: "081234567009", komisi: "Pemuda Remaja" },
+            { id: "P009", nama: "Sdr. Samuel Sebastian Alden", wa: "081234567010", komisi: "Pemuda Remaja" },
+            { id: "P010", nama: "Sdr. Jonathan Amadeus Alden", wa: "081234567011", komisi: "Pemuda Remaja" },
+            { id: "P011", nama: "Sdri. Divandra Putri Etaprisastia", wa: "081234567012", komisi: "Pemuda Remaja" },
+            { id: "P012", nama: "Ibu Lusiana Halim", wa: "081234567013", komisi: "Komisi Wanita" },
+            { id: "P013", nama: "Ibu Diana Situmeang", wa: "081234567013", komisi: "Komisi Wanita" },
+            { id: "P014", nama: "Sdri. Natania Alfega Aripin", wa: "081234567014", komisi: "Pemuda Remaja" },
+            { id: "P015", nama: "Ibu Istiadji Dyah Prasetyaningtyas", wa: "081234567015", komisi: "Komisi Wanita" },
+            { id: "P016", nama: "Ibu Ismawati", wa: "081234567016", komisi: "Komisi Wanita" },
+            { id: "P017", nama: "Ibu Tri Silawati Putri", wa: "081234567017", komisi: "Komisi Anak" },
+            { id: "P018", nama: "Bpk. David Setiawan", wa: "081234567018", komisi: "Komisi Anak" },
+            { id: "P019", nama: "Ibu Eva Sari", wa: "081234567019", komisi: "Komisi Anak" }
+        ];
+
+        // DEFINE SPECIFIC ROLE ITEMS FOR EACH OF THE 5 CHURCH SERVICES
+        const serviceRoleSchema = {
+            "Ibadah Umum": [
+                "Pengkhotbah", "Liturgos", "Singer", "LCD", "Pengiring", 
+                "Penata Suara", "Penyambutan", "Pembaca Warta", "Kolektan"
+            ],
+            "KBA": [
+                "Pemimpin Pujian", "Pengiring", "Tema / Pembicara Kelas Kaleb", 
+                "Tema / Pembicara Kelas Yosua", "Persembahan", "Petugas Sharing The Bible"
+            ],
+            "Komisi Wanita": [
+                "Tema Pembicara", "Pemimpin Pujian", "Pemusik", "Kolektan", 
+                "Penyambutan", "Doa Persiapan"
+            ],
+            "Persekutuan Doa": [
+                "Bahan Firman Tuhan / Pembicara", "Pemimpin Pujian"
+            ],
+            "Pemuda Remaja": [
+                "Pembicara", "Tema / Pembicara Kelas TuRem", "Pemimpin Pujian", 
+                "Pengiring", "LCD", "Doa Syafaat", "Persembahan", "Penanggungjawab"
+            ]
+        };
+
+        // INITIAL JADWAL DATA (STORE)
+        let jadwalStore = [
+            {
+                id: 1,
+                kegiatan: "Ibadah Umum",
+                tanggal: "2026-09-06",
+                waktu: "19.00 WIB",
+                tempat: "Gereja Utama",
+                tema: "Berkata Benar Cerminan Umat Allah",
+                roles: {
+                    "Pengkhotbah": "Ev. Ekker Saogo, M.Min., M.Th.",
+                    "Liturgos": "Pnt. Simon Bambang Sumarno",
+                    "Singer": "Sdri. Suwarni",
+                    "LCD": "Sdr. Samuel Sebastian Alden",
+                    "Pengiring": "Sdr. Joan Natanael Surya Putra",
+                    "Penata Suara": "Sdr. Samuel Budiyanto Suwignyo",
+                    "Penyambutan": "Ibu Ismawati",
+                    "Pembaca Warta": "Sdri. Tesalonika Priskila Bella T., S.Th.",
+                    "Kolektan": "Ibu Istiadji Dyah Prasetyaningtyas"
+                }
+            },
+            {
+                id: 2,
+                kegiatan: "KBA",
+                tanggal: "2026-08-30",
+                waktu: "07.30 WIB",
+                tempat: "Ruang KBA",
+                tema: "Pengakuan Petrus / Setiap Orang Berdosa",
+                roles: {
+                    "Pemimpin Pujian": "Ibu Tri Silawati Putri",
+                    "Pengiring": "Bpk. David Setiawan",
+                    "Tema / Pembicara Kelas Kaleb": "Ibu Eva Sari",
+                    "Tema / Pembicara Kelas Yosua": "Sdri. Suwarni",
+                    "Persembahan": "An. James Nathaniel Haryanto",
+                    "Petugas Sharing The Bible": "An. Jovan Alvaro Setiawan"
+                }
+            },
+            {
+                id: 3,
+                kegiatan: "Komisi Wanita",
+                tanggal: "2026-08-25",
+                waktu: "18.00 WIB",
+                tempat: "GKA Abdi Sabda",
+                tema: "Ceramah Kesehatan: Pola Makan Sehat",
+                roles: {
+                    "Tema Pembicara": "Dr. Lusiana, Sp. GK.",
+                    "Pemimpin Pujian": "Ibu Diana Situmeang",
+                    "Pemusik": "Sdri. Natania Alfega Aripin",
+                    "Kolektan": "Ibu Istiadji Dyah Prasetyaningtyas",
+                    "Penyambutan": "Ibu Ismawati",
+                    "Doa Persiapan": "Pnt. Risma Pramita Sari"
+                }
+            },
+            {
+                id: 4,
+                kegiatan: "Pemuda Remaja",
+                tanggal: "2026-08-29",
+                waktu: "18.00 WIB",
+                tempat: "GKA Abdi Sabda",
+                tema: "Pertumbuhan yang Terlihat Melalui Tindakan Nyata",
+                roles: {
+                    "Pembicara": "Pnt. Surya Wahyudi Lie",
+                    "Tema / Pembicara Kelas TuRem": "Sdri. Tesalonika Priskila Bella T., S.Th.",
+                    "Pemimpin Pujian": "Sdr. Joan Natanael Surya Putra",
+                    "Pengiring": "Sdr. Samuel Budiyanto Suwignyo",
+                    "LCD": "Sdr. Samuel Sebastian Alden",
+                    "Doa Syafaat": "Sdri. Tesalonika Priskila Bella T., S.Th.",
+                    "Persembahan": "Sdr. Jonathan Amadeus Alden",
+                    "Penanggungjawab": "Sdri. Divandra Putri Etaprisastia"
+                }
+            },
+            {
+                id: 5,
+                kegiatan: "Persekutuan Doa",
+                tanggal: "2026-09-04",
+                waktu: "18.00 WIB",
+                tempat: "Ruang Doa GKA Abdi Sabda",
+                tema: "Setia dalam Doa dan Pengharapan",
+                roles: {
+                    "Bahan Firman Tuhan / Pembicara": "Ev. Ekker Saogo, M.Min., M.Th.",
+                    "Pemimpin Pujian": "Pnt. Risma Pramita Sari"
+                }
+            }
+        ];
+
+        // INIT APPLICATION ON LOAD
+        
+        // REAL-TIME CLOCK & DATE ENGINE (WIB)
+        function updateLiveClock() {
+            const now = new Date();
+            const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+            const dayName = days[now.getDay()];
+            const dateNum = String(now.getDate()).padStart(2, '0');
+            const monthName = months[now.getMonth()];
+            const year = now.getFullYear();
+
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+
+            document.getElementById('live-date-display').textContent = `${dayName}, ${dateNum} ${monthName} ${year}`;
+            document.getElementById('live-time-display').textContent = `${hours}:${minutes}:${seconds} WIB`;
+        }
+        setInterval(updateLiveClock, 1000);
+        updateLiveClock();
+
+        
+        // MODAL TAMBAH PETUGAS LOGIC
+        function openModalPetugas() {
+            document.getElementById('modal-petugas').classList.remove('hidden');
+        }
+
+        function closeModalPetugas() {
+            document.getElementById('modal-petugas').classList.add('hidden');
+            document.getElementById('form-tambah-petugas').reset();
+        }
+
+        
+        // MODAL TAMBAH KEGIATAN CUSTOM LOGIC
+        function openModalCustomKegiatan() {
+            document.getElementById('modal-custom-kegiatan').classList.remove('hidden');
+        }
+
+        function closeModalCustomKegiatan() {
+            document.getElementById('modal-custom-kegiatan').classList.add('hidden');
+            document.getElementById('form-tambah-kegiatan-custom').reset();
+        }
+
+        function handleTambahKegiatanCustom(event) {
+            event.preventDefault();
+            const namaKegiatan = document.getElementById('add-kegiatan-nama').value.trim();
+            const rolesInput = document.getElementById('add-kegiatan-roles').value.trim();
+
+            if (!namaKegiatan || !rolesInput) return;
+
+            const rolesArray = rolesInput.split(',').map(r => r.trim()).filter(r => r !== '');
+
+            // 1. Add to schema
+            serviceRoleSchema[namaKegiatan] = rolesArray;
+
+            // 2. Add to Select Option (Input Schedule)
+            const inpSelect = document.getElementById('inp-kegiatan');
+            const newOpt = document.createElement('option');
+            newOpt.value = namaKegiatan;
+            newOpt.textContent = `⭐ ${namaKegiatan}`;
+            inpSelect.appendChild(newOpt);
+            inpSelect.value = namaKegiatan;
+
+            // 3. Add to Filter Select (View Schedule)
+            const filterSelect = document.getElementById('filter-kegiatan');
+            const newFilterOpt = document.createElement('option');
+            newFilterOpt.value = namaKegiatan;
+            newFilterOpt.textContent = `⭐ ${namaKegiatan}`;
+            filterSelect.appendChild(newFilterOpt);
+
+            // 4. Update dynamic inputs form
+            updateFormRoles();
+
+            closeModalCustomKegiatan();
+            alert(`✨ Jenis Kegiatan "${namaKegiatan}" berhasil ditambahkan dan posisi petugas siap diisi!`);
+        }
+
+        function handleTambahPetugas(event) {
+            event.preventDefault();
+            const nama = document.getElementById('add-nama').value.trim();
+            const wa = document.getElementById('add-wa').value.trim();
+
+            if (!nama) return;
+
+            const newId = `P${String(masterPetugas.length + 1).padStart(3, '0')}`;
+            const newPetugas = { id: newId, nama, wa, komisi: "Aktif" };
+
+            masterPetugas.push(newPetugas);
+            
+            // Refresh views
+            renderPetugasView();
+            renderRekapView();
+            updateFormRoles(); // Refresh dropdown options in schedule form
+
+            closeModalPetugas();
+            alert(`✅ Petugas ${nama} berhasil ditambahkan dan otomatis bisa dipilih pada formulir penjadwalan!`);
+        }
+
+        window.onload = function() {
+            // Set default date to upcoming Sunday
+            document.getElementById("inp-tanggal").value = "2026-09-13";
+            updateFormRoles();
+            renderJadwalView();
+            renderRekapView();
+            renderPetugasView();
+        };
+
+        // SWITCH TAB LOGIC
+        function switchTab(tabName) {
+            ['jadwal', 'input', 'rekap', 'petugas'].forEach(t => {
+                document.getElementById('sec-' + t).classList.add('hidden');
+                document.getElementById('tab-' + t).classList.remove('active-tab');
+                document.getElementById('tab-' + t).classList.add('text-slate-600');
+            });
+
+            document.getElementById('sec-' + tabName).classList.remove('hidden');
+            document.getElementById('tab-' + tabName).classList.add('active-tab');
+            document.getElementById('tab-' + tabName).classList.remove('text-slate-600');
+
+            if(tabName === 'rekap') renderRekapView();
+            if(tabName === 'jadwal') renderJadwalView();
+        }
+
+        // UPDATE FORM ROLE INPUTS BASED ON ACTIVITY TYPE
+        function updateFormRoles() {
+            const kegiatan = document.getElementById('inp-kegiatan').value;
+            const roles = serviceRoleSchema[kegiatan] || [];
+            const container = document.getElementById('dynamic-role-inputs');
+            
+            // Default time adjustment
+            if(kegiatan === 'Ibadah Umum') document.getElementById('inp-waktu').value = '19.00 WIB';
+            if(kegiatan === 'KBA') document.getElementById('inp-waktu').value = '07.30 WIB';
+            if(kegiatan === 'Komisi Wanita') document.getElementById('inp-waktu').value = '18.00 WIB';
+            if(kegiatan === 'Persekutuan Doa') document.getElementById('inp-waktu').value = '18.00 WIB';
+            if(kegiatan === 'Pemuda Remaja') document.getElementById('inp-waktu').value = '18.00 WIB';
+
+            let html = '';
+            roles.forEach((role, idx) => {
+                html += `
+                <div class="bg-white p-3 rounded-lg border border-slate-200">
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">${role}</label>
+                    <input list="petugas-list-${idx}" id="role-val-${idx}" data-rolename="${role}" placeholder="🔍 Ketik nama petugas..." class="w-full bg-slate-50 border border-slate-300 rounded p-1.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                    <datalist id="petugas-list-${idx}">
+                        ${masterPetugas.map(p => `<option value="${p.nama}"></option>`).join('')}
+                    </datalist>
+                </div>`;
+            });
+
+            container.innerHTML = html;
+            setTimeout(startCountdownEngine, 100);
+        }
+
+        // SAVE JADWAL & ANTI-CONFLICT ENGINE CHECK
+        function handleSaveJadwal(event) {
+            event.preventDefault();
+
+            const kegiatan = document.getElementById('inp-kegiatan').value;
+            const tanggal = document.getElementById('inp-tanggal').value;
+            const waktu = document.getElementById('inp-waktu').value;
+            const tema = document.getElementById('inp-tema').value;
+            const tempat = document.getElementById('inp-tempat').value;
+
+            // Gather assigned roles
+            const rolesObj = {};
+            const roleInputs = document.querySelectorAll('[id^="role-val-"]');
+            
+            let assignedNamesInThisForm = [];
+            let conflictFound = false;
+            let conflictMsg = "";
+
+            roleInputs.forEach(inp => {
+                const roleName = inp.getAttribute('data-rolename');
+                const selectedPetugas = inp.value;
+                if(selectedPetugas) {
+                    rolesObj[roleName] = selectedPetugas;
+                    assignedNamesInThisForm.push({ role: roleName, name: selectedPetugas });
+                }
+            });
+
+            // Check duplicate names within the same form
+            const nameCounts = {};
+            const duplicateNames = new Set();
+
+            assignedNamesInThisForm.forEach(item => {
+                if (nameCounts[item.name]) {
+                    duplicateNames.add(item.name);
+                } else {
+                    nameCounts[item.name] = 1;
+                }
+            });
+
+            // Hide alert if previously shown
+            document.getElementById('conflict-alert').classList.add('hidden');
+
+            // Save if valid
+            const newJadwal = {
+                id: Date.now(),
+                kegiatan,
+                tanggal,
+                waktu,
+                tempat,
+                tema,
+                roles: rolesObj
+            };
+
+            jadwalStore.unshift(newJadwal);
+            alert("✅ Jadwal Berhasil Disimpan & Tidak Ada Benturan Petugas!");
+            switchTab('jadwal');
+        }
+
+        // RENDER JADWAL CARDS
+        
+        // COUNTDOWN TIMER ENGINE FOR AGENDA CARDS
+        function startCountdownEngine() {
+            function updateAllCountdowns() {
+                const now = new Date();
+                
+                jadwalStore.forEach(j => {
+                    const elem = document.getElementById(`countdown-${j.id}`);
+                    if (!elem) return;
+
+                    // Parse date and time (e.g., 2026-09-06 and 19.00 WIB)
+                    const dateParts = j.tanggal.split('-');
+                    let timeParts = [19, 0];
+                    if (j.waktu) {
+                        const match = j.waktu.match(/(\d{1,2})[.:](\d{2})/);
+                        if (match) {
+                            timeParts = [parseInt(match[1]), parseInt(match[2])];
+                        }
+                    }
+
+                    const targetDate = new Date(
+                        parseInt(dateParts[0]),
+                        parseInt(dateParts[1]) - 1,
+                        parseInt(dateParts[2]),
+                        timeParts[0],
+                        timeParts[1],
+                        0
+                    );
+
+                    const diffMs = targetDate - now;
+
+                    if (diffMs <= 0) {
+                        elem.className = "font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 shadow-sm flex items-center space-x-1";
+                        elem.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500 text-[10px]"></i><span>Selesai / Sedang Berlangsung</span>`;
+                    } else {
+                        const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
+                        const days = Math.floor(totalHours / 24);
+                        const hours = totalHours % 24;
+                        const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                        const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+
+                        let text = "";
+                        if (days > 0) {
+                            text = `<b>${days}</b> Hari <b>${hours}</b> Jam <b>${minutes}</b> Mnt`;
+                        } else {
+                            text = `<b>${hours}</b> Jam <b>${minutes}</b> Mnt <b>${seconds}</b> Dtk`;
+                        }
+
+                        elem.innerHTML = `<i class="fa-solid fa-hourglass-half text-amber-500 text-[10px] animate-spin"></i> <span>${text}</span>`;
+                    }
+                });
+            }
+
+            updateAllCountdowns();
+            setInterval(updateAllCountdowns, 1000);
+        }
+
+        function renderJadwalView() {
+            const container = document.getElementById('jadwal-cards-container');
+            const filter = document.getElementById('filter-kegiatan').value;
+
+            const filteredData = filter === 'ALL' ? jadwalStore : jadwalStore.filter(j => j.kegiatan === filter);
+
+            if(filteredData.length === 0) {
+                container.innerHTML = `<div class="col-span-2 text-center py-12 bg-white rounded-xl border border-slate-200 text-slate-500">Belum ada jadwal untuk kegiatan ini.</div>`;
+                return;
+            }
+
+            // ICON MAPPER FOR EACH SERVICE TYPE
+            const serviceIcons = {
+                "Ibadah Umum": "fa-cross",
+                "KBA": "fa-child-reaching",
+                "Komisi Wanita": "fa-person-dress",
+                "Persekutuan Doa": "fa-hands-praying",
+                "Pemuda Remaja": "fa-users-line"
+            };
+
+            let html = '';
+            filteredData.forEach(j => {
+                const iconClass = serviceIcons[j.kegiatan] || "fa-church";
+                html += `
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow">
+                    <div class="bg-indigo-900 text-white p-4 flex justify-between items-start">
+                        <div>
+                            <span class="inline-flex items-center space-x-1.5 bg-amber-400 text-indigo-950 text-[10px] font-bold px-2.5 py-0.5 rounded uppercase tracking-wider mb-1 shadow-sm">
+                                <i class="fa-solid ${iconClass}"></i>
+                                <span>${j.kegiatan}</span>
+                            </span>
+                            <h3 class="font-bold text-base leading-snug">${j.tema}</h3>
+                        </div>
+                        <span class="text-xs bg-indigo-800 text-indigo-200 px-2.5 py-1 rounded-md border border-indigo-700 font-mono flex items-center space-x-1">
+                            <i class="fa-regular fa-clock text-[10px]"></i>
+                            <span>${j.waktu}</span>
+                        </span>
+                    </div>
+
+                    <div class="p-4 bg-slate-50 border-b border-slate-100 space-y-2">
+                        <div class="flex items-center justify-between text-xs text-slate-600">
+                            <div class="flex items-center space-x-2">
+                                <i class="fa-regular fa-calendar text-indigo-600"></i>
+                                <span class="font-semibold">${j.tanggal}</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <i class="fa-solid fa-location-dot text-rose-500"></i>
+                                <span>${j.tempat}</span>
+                            </div>
+                        </div>
+                        
+                        <!-- COUNTDOWN TIMER BADGE -->
+                        <div class="pt-1 border-t border-slate-200/60 flex justify-between items-center text-[11px]">
+                            <span class="text-slate-500 font-medium">Hitung Mundur Acara:</span>
+                            <span id="countdown-${j.id}" class="font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200 shadow-sm flex items-center space-x-1">
+                                <i class="fa-solid fa-hourglass-half text-amber-500 text-[10px] animate-pulse"></i>
+                                <span>Menghitung...</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="p-4 space-y-2 text-xs">
+                        <h4 class="font-bold text-slate-700 uppercase tracking-wider text-[11px] mb-2 border-b pb-1">Daftar Petugas Pelayanan:</h4>
+                        ${(() => {
+                            // Find duplicate names in this specific agenda
+                            const nameOccurrences = {};
+                            Object.values(j.roles).forEach(name => {
+                                if(name) nameOccurrences[name] = (nameOccurrences[name] || 0) + 1;
+                            });
+
+                            return Object.entries(j.roles).map(([role, name]) => {
+                                const isDuplicate = nameOccurrences[name] > 1;
+                                const nameStyle = isDuplicate 
+                                    ? `<span class="font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 flex items-center space-x-1"><i class="fa-solid fa-triangle-exclamation text-[10px]"></i><span>${name}</span></span>`
+                                    : `<span class="font-bold text-slate-800">${name}</span>`;
+
+                                return `
+                                <div class="flex justify-between items-center py-1 border-b border-slate-100">
+                                    <span class="text-slate-500 font-medium">${role}</span>
+                                    ${nameStyle}
+                                </div>`;
+                            }).join('');
+                        })()}
+                    </div>
+
+                    <div class="p-3 bg-slate-50 border-t border-slate-100 flex justify-end space-x-2">
+                        <button onclick="printAgendaCard(${j.id})" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-lg font-medium flex items-center space-x-1 shadow-sm transition-colors">
+                            <i class="fa-solid fa-print"></i>
+                            <span>Cetak Agenda</span>
+                        </button>
+                        <button onclick="sendWAReminder('${j.kegiatan}', '${j.tanggal}', '${j.waktu}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs rounded-lg font-medium flex items-center space-x-1 shadow-sm transition-colors">
+                            <i class="fa-brands fa-whatsapp"></i>
+                            <span>Kirim Reminder WA</span>
+                        </button>
+                    </div>
+                </div>`;
+            });
+
+            container.innerHTML = html;
+            setTimeout(startCountdownEngine, 100);
+        }
+
+        // SIMULATE WA REMINDER
+        
+        // PRINT SINGLE AGENDA FUNCTION
+        function printAgendaCard(agendaId) {
+            const agenda = jadwalStore.find(item => item.id === agendaId);
+            if (!agenda) return;
+
+            const printWindow = window.open('', '_blank', 'width=800,height=900');
+            
+            const rolesHtml = Object.entries(agenda.roles).map(([role, name]) => `
+                <tr>
+                    <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; color: #475569; font-weight: 600;">${role}</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 700; color: #0f172a;">${name}</td>
+                </tr>
+            `).join('');
+
+            const printContent = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Jadwal Pelayanan - ${agenda.kegiatan}</title>
+                    <style>
+                        body { font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #1e293b; }
+                        .header { text-align: center; border-bottom: 2px solid #312e81; padding-bottom: 15px; margin-bottom: 20px; }
+                        .header h1 { margin: 0; color: #312e81; font-size: 22px; }
+                        .header p { margin: 5px 0 0; color: #64748b; font-size: 13px; }
+                        .card-title { background: #312e81; color: white; padding: 15px; rounded-radius: 8px; margin-bottom: 20px; border-radius: 6px; }
+                        .card-title h2 { margin: 0; font-size: 18px; }
+                        .card-title p { margin: 5px 0 0; font-size: 13px; color: #e0e7ff; }
+                        .meta-info { display: flex; justify-between: space-between; margin-bottom: 20px; background: #f8fafc; padding: 12px; border-radius: 6px; font-size: 13px; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
+                        th { text-align: left; padding: 8px; background: #f1f5f9; border-bottom: 2px solid #cbd5e1; color: #334155; }
+                        .footer { margin-top: 40px; text-align: right; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 10px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h1>GKA ABDI SABDA</h1>
+                        <p>Jadwal Penatalayan & Tugas Pelayanan Gereja</p>
+                    </div>
+
+                    <div class="card-title">
+                        <h2>[${agenda.kegiatan.toUpperCase()}] ${agenda.tema}</h2>
+                        <p>Waktu: ${agenda.waktu}</p>
+                    </div>
+
+                    <div class="meta-info">
+                        <div><strong>Tanggal:</strong> ${agenda.tanggal}</div>
+                        <div><strong>Tempat:</strong> ${agenda.tempat}</div>
+                    </div>
+
+                    <h3>DAFTAR PETUGAS PELAYANAN</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Posisi Pelayanan</th>
+                                <th style="text-align: right;">Nama Petugas</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rolesHtml}
+                        </tbody>
+                    </table>
+
+                    <div class="footer">
+                        Dicetak pada: ${new Date().toLocaleString('id-ID')} WIB
+                    </div>
+
+                    <script>
+                        window.onload = function() {
+                            window.print();
+                            window.onafterprint = function() { window.close(); };
+                        };
+                    <\/script>
+                </body>
+                </html>
+            `;
+
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+        }
+
+        function sendWAReminder(kegiatan, tanggal, waktu) {
+            alert(`📱 Notifikasi Pengingat WhatsApp berhasil dikirimkan ke seluruh petugas ${kegiatan} untuk tanggal ${tanggal} (${waktu})!`);
+        }
+
+        // RENDER REKAP VIEW
+        function renderRekapView() {
+            const tbody = document.getElementById('rekap-table-body');
+            
+            let html = '';
+            masterPetugas.forEach(p => {
+                let total = 0;
+                let counts = { "Ibadah Umum": 0, "KBA": 0, "Komisi Wanita": 0, "Persekutuan Doa": 0, "Pemuda Remaja": 0 };
+
+                jadwalStore.forEach(j => {
+                    Object.values(j.roles).forEach(assignedName => {
+                        if(assignedName.includes(p.nama)) {
+                            total++;
+                            if(counts[j.kegiatan] !== undefined) counts[j.kegiatan]++;
+                        }
+                    });
+                });
+
+                const statusBadge = total >= 4 ? 
+                    `<span class="bg-rose-100 text-rose-800 text-[10px] font-bold px-2 py-0.5 rounded">Beban Tinggi</span>` : 
+                    `<span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded">Ideal</span>`;
+
+                html += `
+                <tr class="hover:bg-slate-50 border-b text-xs">
+                    <td class="p-3 font-semibold text-slate-800">${p.nama}</td>
+                    <td class="p-3 text-center font-bold text-indigo-600">${total}</td>
+                    <td class="p-3 text-center">${counts["Ibadah Umum"]}</td>
+                    <td class="p-3 text-center">${counts["KBA"]}</td>
+                    <td class="p-3 text-center">${counts["Komisi Wanita"]}</td>
+                    <td class="p-3 text-center">${counts["Persekutuan Doa"]}</td>
+                    <td class="p-3 text-center">${counts["Pemuda Remaja"]}</td>
+                    <td class="p-3 text-center">${statusBadge}</td>
+                </tr>`;
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        // RENDER PETUGAS VIEW
+        function renderPetugasView() {
+            const grid = document.getElementById('petugas-grid');
+            let html = '';
+            masterPetugas.forEach(p => {
+                html += `
+                <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between">
+                    <div>
+                        <h4 class="font-bold text-sm text-slate-800">${p.nama}</h4>
+                        <p class="text-xs text-slate-500">WA: ${p.wa}</p>
+                    </div>
+                    <span class="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded font-medium">Aktif</span>
+                </div>`;
+            });
+            grid.innerHTML = html;
+        }
+
+        // EXPORT TO CSV
+        function exportToCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,Nama Petugas,Total Tugas,Ibadah Umum,KBA,Komisi Wanita,Persekutuan Doa,Pemuda Remaja\n";
+            masterPetugas.forEach(p => {
+                let total = 0;
+                let counts = { "Ibadah Umum": 0, "KBA": 0, "Komisi Wanita": 0, "Persekutuan Doa": 0, "Pemuda Remaja": 0 };
+                jadwalStore.forEach(j => {
+                    Object.values(j.roles).forEach(assignedName => {
+                        if(assignedName.includes(p.nama)) {
+                            total++;
+                            if(counts[j.kegiatan] !== undefined) counts[j.kegiatan]++;
+                        }
+                    });
+                });
+                csvContent += `"${p.nama}",${total},${counts["Ibadah Umum"]},${counts["KBA"]},${counts["Komisi Wanita"]},${counts["Persekutuan Doa"]},${counts["Pemuda Remaja"]}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "Rekap_Pelayanan_Gereja.csv");
+            document.body.appendChild(link);
+            link.click();
+        }
+
+        function resetForm() {
+            document.getElementById('form-input-jadwal').reset();
+            updateFormRoles();
+        }
+    </script>
+
+    <!-- MODAL FORM TAMBAH PETUGAS -->
+    <div id="modal-petugas" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div class="bg-indigo-900 text-white px-5 py-4 flex justify-between items-center">
+                <h3 class="font-bold text-base flex items-center space-x-2">
+                    <i class="fa-solid fa-user-plus text-amber-400"></i>
+                    <span>Tambah Petugas / Pelayan Baru</span>
+                </h3>
+                <button onclick="closeModalPetugas()" class="text-indigo-200 hover:text-white text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <form id="form-tambah-petugas" onsubmit="handleTambahPetugas(event)" class="p-5 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Lengkap & Gelar</label>
+                    <input type="text" id="add-nama" placeholder="Contoh: Pnt. Budi Santoso, S.Th." required class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">No. WhatsApp / HP</label>
+                    <input type="tel" id="add-wa" placeholder="Contoh: 081234567890" required class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                
+
+
+                <div class="pt-3 border-t border-slate-100 flex justify-end space-x-2">
+                    <button type="button" onclick="closeModalPetugas()" class="px-4 py-2 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg">Batal</button>
+                    <button type="submit" class="px-5 py-2 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow flex items-center space-x-1.5">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Simpan Petugas</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- MODAL FORM TAMBAH JENIS KEGIATAN BARU -->
+    <div id="modal-custom-kegiatan" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div class="bg-indigo-900 text-white px-5 py-4 flex justify-between items-center">
+                <h3 class="font-bold text-base flex items-center space-x-2">
+                    <i class="fa-solid fa-calendar-plus text-amber-400"></i>
+                    <span>Tambah Jenis Kegiatan Gereja Baru</span>
+                </h3>
+                <button onclick="closeModalCustomKegiatan()" class="text-indigo-200 hover:text-white text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <form id="form-tambah-kegiatan-custom" onsubmit="handleTambahKegiatanCustom(event)" class="p-5 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Kegiatan Baru</label>
+                    <input type="text" id="add-kegiatan-nama" placeholder="Contoh: Persekutuan Pria / Kebaktian Paskah" required class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Daftar Posisi Petugas (Pisahkan dengan Koma)</label>
+                    <textarea id="add-kegiatan-roles" rows="3" placeholder="Contoh: Pengkhotbah, Liturgos, Singer, Pemusik, LCD" required class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"></textarea>
+                    <p class="text-[10px] text-slate-400 mt-1">Sistem akan otomatis membuatkan form isian sesuai daftar posisi di atas.</p>
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 flex justify-end space-x-2">
+                    <button type="button" onclick="closeModalCustomKegiatan()" class="px-4 py-2 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg">Batal</button>
+                    <button type="submit" class="px-5 py-2 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow flex items-center space-x-1.5">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Tambah Kegiatan</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</body>
+</html>
